@@ -19,8 +19,9 @@ int main() {
 	constexpr float mouse_pressure_increment = 10.0f;
 
 	// sfml init
-	sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT, 32), "SFML Graphics", sf::Style::Default);
-	//sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT, 32), "SFML Graphics", sf::Style::Fullscreen);
+	constexpr auto window_style = (!FULLSCREEN) ? sf::Style::Default : sf::Style::Fullscreen;
+	sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT, 32), "Fluid Solver", window_style);
+	window.setFramerateLimit(60); // framerate limit 60Hz
 	
 	sf::Image image;
 	sf::Texture texture;
@@ -66,8 +67,9 @@ int main() {
 			if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
 				sf::Vector2f pos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 				sf::Vector2f delta = pos - pos0;
-				if(delta.x < 100.f && delta.y < 100.f)
+				if(delta.x < 100.f && delta.y < 100.f) {
 					fluid.add_velocity((int)pos.x, (int)pos.y, delta.x, delta.y, velocity_add, (int)radius);
+				}
 				pos0 = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 			}
 		}

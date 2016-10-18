@@ -1,6 +1,8 @@
 #include "FluidSolver.h"
 #include "Config.h"
 
+constexpr int MEM_SIZE = WIDTH*HEIGHT;
+
 using namespace std;
 
 FluidSolver::FluidSolver()
@@ -39,11 +41,16 @@ void FluidSolver::cl_init()
 		cout << " No platforms found. Check OpenCL installation!\n";
 		exit(1);
 	}
-	default_platform = all_platforms[PLATEFORM];
+	auto id_platform = PLATFORM;
+	if (id_platform >= all_platforms.size()) {
+		cout << " Warning: Default platform used (Wrong configuration)\n";
+		id_platform = 0;
+	}
+	default_platform = all_platforms[PLATFORM];
 	cout << "Using platform: " << default_platform.getInfo<CL_PLATFORM_NAME>() << "\n";
 	//get default device of the default platform
 	vector<cl::Device> all_devices;
-	default_platform.getDevices(CL_DEVICE_TYPE_GPU, &all_devices);
+	default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
 	if (all_devices.size() == 0) {
 		cout << " No devices found. Check OpenCL installation!\n";
 		exit(1);
@@ -64,17 +71,19 @@ void FluidSolver::cl_init()
 	if (program.build({ default_device }) != CL_SUCCESS) {
 		cout << " Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device) << "\n";
 		exit(1);
+	} else {
+		cout << "Build sucessful" << endl;
 	}
 }
 
 void FluidSolver::program_init() {
 	static const cl::ImageFormat format_float1 = { CL_R, CL_FLOAT };
-	kernel_diffuse = cl::Kernel(program, "diffuse");
-	kernel_advect = cl::Kernel(program, "advect");
-	kernel_project1 = cl::Kernel(program, "project1");
-	kernel_project2 = cl::Kernel(program, "project2");
-	kernel_draw_img = cl::Kernel(program, "floatToR");
-	kernel_reset = cl::Kernel(program, "reset");
+	kernel_diffuse   = cl::Kernel(program, "diffuse");
+	kernel_advect    = cl::Kernel(program, "advect");
+	kernel_project1  = cl::Kernel(program, "project1");
+	kernel_project2  = cl::Kernel(program, "project2");
+	kernel_draw_img  = cl::Kernel(program, "floatToR");
+	kernel_reset     = cl::Kernel(program, "reset");
 	kernel_addsource = cl::Kernel(program, "addCircleValue");
 
 	density_in =	cl::Image2D(context, CL_MEM_READ_WRITE, format_float1, WIDTH, HEIGHT, 0);
@@ -142,8 +151,8 @@ void FluidSolver::reset()
 void FluidSolver::update(float dt)
 {
 	constexpr auto VISCO_DIV = 1.0f + 4.0f*VISCO;
-	if (dt > 0.01f) {
-		dt = 0.01f;
+	if (dt > 0.02f) { // clamp update rate else the error is too high
+		dt = 0.02f;
 	}
 	const float a = dt*DIFF_DENSITY*WIDTH*HEIGHT;
 	// velocity -----------------------
@@ -172,14 +181,13 @@ void FluidSolver::update(float dt)
 
 
 inline void FluidSolver::diffuse(cl::Image2D & input_output, const cl::Image2D & src, float diff, float diff_div, int bound) {
-	constexpr unsigned int nb_iter = 16;
 	if (diff_div == 0.0f) diff_div = 0.000000000001f;
 	kernel_diffuse.setArg(0, input_output);
 	kernel_diffuse.setArg(1, input_output);
 	kernel_diffuse.setArg(2, src);
 	kernel_diffuse.setArg(3, diff);
 	kernel_diffuse.setArg(4, diff_div);
-	for (unsigned int k = 0; k < nb_iter; ++k) {
+	for (unsigned int k = 0; k < SOLVER_NB_ITERATIONS; ++k) {
 		queue.enqueueNDRangeKernel(kernel_diffuse, origin_work, region_work, cl::NullRange);
 	}
 }
