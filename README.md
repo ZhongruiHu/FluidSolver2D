@@ -15,3 +15,14 @@ The main configuration variables are located in config.h where you can change th
 * Right mouse drag - add velocity to the velocity field in the direction of the mouse within a certain radius
 * Mouse wheel - change the radius 
 * Space - reset the simulation 
+
+---
+
+# 3D Solver
+
+A 3D solver is available in the *fluid_solver_3d/* folder. The user interface is still in 2D but, you can record the state of the fluid in 3D in .df3. These file can be read by POV-Ray to render an animation of the fluid, see the example in *povray_scene/*.
+
+# Usage
+
+* Everything works like the 2D solver
+* D Key - start or stop the record of the state of fluid
